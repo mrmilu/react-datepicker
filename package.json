@@ -117,7 +117,6 @@
     "prepare": "npm run build",
     "codecov": "cat coverage/*/lcov.info | ./node_modules/.bin/codecov",
     "prebuild": "rimraf es lib dist",
-<<<<<<< HEAD
     "build": "NODE_ENV=production run-p build:** && run-p css:**",
     "build-dev": "NODE_ENV=development run-p build:** && run-p css:**",
     "css:prod":
@@ -138,19 +137,7 @@
       "cross-env BABEL_ENV=es rollup -c rollup.umd.config.js -i src/index.jsx -o dist/react-datepicker.min.js",
     "build:docs":
       "cross-env MODULES=false webpack --config webpack.docs.config.js"
-=======
-    "build": "cross-env NODE_ENV=production run-p build:** && run-p css:**",
-    "build-dev": "cross-env NODE_ENV=development run-p build:** && run-p css:**",
-    "css:prod": "node-sass --output-style compressed src/stylesheets/datepicker.scss > dist/react-datepicker.min.css",
-    "css:modules:prod": "node-sass --output-style compressed src/stylesheets/datepicker-cssmodules.scss > dist/react-datepicker-cssmodules.min.css",
-    "css:dev": "node-sass --output-style expanded src/stylesheets/datepicker.scss > dist/react-datepicker.css",
-    "css:modules:dev": "node-sass --output-style expanded src/stylesheets/datepicker-cssmodules.scss > dist/react-datepicker-cssmodules.css",
-    "build:es": "cross-env BABEL_ENV=es rollup -c -i src/index.jsx -o es/index.js",
-    "build:cjs": "cross-env BABEL_ENV=cjs rollup -c -i src/index.jsx -o lib/index.js",
-    "build:umd:dev": "cross-env BABEL_ENV=es rollup -c rollup.umd.config.js -i src/index.jsx -o dist/react-datepicker.js",
-    "build:umd:prod": "cross-env BABEL_ENV=es rollup -c rollup.umd.config.js -i src/index.jsx -o dist/react-datepicker.min.js",
-    "build:docs": "cross-env MODULES=false webpack --config webpack.docs.config.js"
->>>>>>> 8a5239e03e4964dbe102db5f3410e71af620b6a1
+
   },
   "lint-staged": {
     "*.{js,jsx,json,css,scss,md}": [
