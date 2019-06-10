@@ -1,90 +1,94 @@
-import React from 'react'
-import PropTypes from 'prop-types'
-import classNames from 'classnames'
+import React from "react";
+import PropTypes from "prop-types";
+import classNames from "classnames";
 import {
   addMonths,
-  cloneDate,
   formatDate,
   getStartOfMonth,
+  newDate,
   isAfter,
   isSameMonth,
-  isSameYear
+  isSameYear,
+  getTime
 } from "./date_utils";
 
-function generateMonthYears (minDate, maxDate) {
-  const list = []
+function generateMonthYears(minDate, maxDate) {
+  const list = [];
 
-  const currDate = getStartOfMonth(cloneDate(minDate))
-  const lastDate = getStartOfMonth(cloneDate(maxDate))
+  let currDate = getStartOfMonth(minDate);
+  const lastDate = getStartOfMonth(maxDate);
 
   while (!isAfter(currDate, lastDate)) {
-    list.push(cloneDate(currDate))
+    list.push(newDate(currDate));
 
-    addMonths(currDate, 1)
+    currDate = addMonths(currDate, 1);
   }
-
-  return list
+  return list;
 }
 
 export default class MonthYearDropdownOptions extends React.Component {
   static propTypes = {
-    minDate: PropTypes.object.isRequired,
-    maxDate: PropTypes.object.isRequired,
+    minDate: PropTypes.instanceOf(Date).isRequired,
+    maxDate: PropTypes.instanceOf(Date).isRequired,
     onCancel: PropTypes.func.isRequired,
     onChange: PropTypes.func.isRequired,
     scrollableMonthYearDropdown: PropTypes.bool,
-    date: PropTypes.object.isRequired,
+    date: PropTypes.instanceOf(Date).isRequired,
     dateFormat: PropTypes.string.isRequired
-  }
+  };
 
-  constructor (props) {
-    super(props)
+  constructor(props) {
+    super(props);
 
     this.state = {
       monthYearsList: generateMonthYears(this.props.minDate, this.props.maxDate)
-    }
+    };
   }
 
   renderOptions = () => {
-
     return this.state.monthYearsList.map(monthYear => {
+      const monthYearPoint = getTime(monthYear);
+      const isSameMonthYear =
+        isSameYear(this.props.date, monthYear) &&
+        isSameMonth(this.props.date, monthYear);
 
-        const monthYearPoint = monthYear.valueOf()
-
-        const isSameMonthYear = isSameYear(this.props.date, monthYear) && isSameMonth(this.props.date, monthYear)
-
-        return <div className={isSameMonthYear ? 'react-datepicker__month-year-option --selected_month-year' :  'react-datepicker__month-year-option'}
+      return (
+        <div
+          className={
+            isSameMonthYear
+              ? "react-datepicker__month-year-option --selected_month-year"
+              : "react-datepicker__month-year-option"
+          }
           key={monthYearPoint}
           ref={monthYearPoint}
-          onClick={this.onChange.bind(this, monthYearPoint)}>
+          onClick={this.onChange.bind(this, monthYearPoint)}
+        >
           {isSameMonthYear ? (
-                <span className="react-datepicker__month-year-option--selected">✓</span>
-              ) : (
-                ""
-              )}
+            <span className="react-datepicker__month-year-option--selected">
+              ✓
+            </span>
+          ) : (
+            ""
+          )}
           {formatDate(monthYear, this.props.dateFormat)}
         </div>
-      }
-    )
-  }
+      );
+    });
+  };
 
   onChange = monthYear => this.props.onChange(monthYear);
 
-
   handleClickOutside = () => {
-    this.props.onCancel()
-  }
+    this.props.onCancel();
+  };
 
-  render () {
+  render() {
     let dropdownClass = classNames({
-      'react-datepicker__month-year-dropdown': true,
-      'react-datepicker__month-year-dropdown--scrollable': this.props.scrollableMonthYearDropdown
-    })
+      "react-datepicker__month-year-dropdown": true,
+      "react-datepicker__month-year-dropdown--scrollable": this.props
+        .scrollableMonthYearDropdown
+    });
 
-    return (
-      <div className={dropdownClass}>
-        {this.renderOptions()}
-      </div>
-    )
+    return <div className={dropdownClass}>{this.renderOptions()}</div>;
   }
 }

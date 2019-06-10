@@ -1,12 +1,11 @@
 import React from "react";
 import DatePicker from "react-datepicker";
-import moment from "moment";
 
-export default class OpenByDefault extends React.Component {
+export default class TimeInput extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      startDate: moment()
+      startDate: new Date()
     };
   }
 
@@ -22,19 +21,24 @@ export default class OpenByDefault extends React.Component {
         <pre className="column example__code">
           <code className="jsx">
             {`
-          <DatePicker
-            autoFocus
-            selected={this.state.startDate}
-            onChange={this.handleChange}
-          />
-          `}
+<DatePicker
+    selected={this.state.startDate}
+    timeInputLabel="Time:"
+    onChange={this.handleChange}
+    dateFormat="MM/dd/yyyy h:mm aa"
+    showTimeInput
+/>
+`}
           </code>
         </pre>
         <div className="column">
           <DatePicker
-            autoFocus
             selected={this.state.startDate}
-            onChange={this.handleChange}/>
+            timeInputLabel="Time:"
+            onChange={this.handleChange}
+            dateFormat="MM/dd/yyyy h:mm aa"
+            showTimeInput
+          />
         </div>
       </div>
     );

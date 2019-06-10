@@ -10,6 +10,7 @@ General datepicker component.
 | `calendarClassName`          | `string`                       |                 |                                            |
 | `children`                   | `node`                         |                 |                                            |
 | `className`                  | `string`                       |                 |                                            |
+| `clearButtonTitle`           | `string`                       |                 |                                            |
 | `customInput`                | `element`                      |                 |                                            |
 | `customInputRef`             | `string`                       | `'ref'`         | The property used to pass the ref callback |
 | `dateFormat`                 | `union(string\|array)`         | `'L'`           |                                            |
@@ -18,7 +19,7 @@ General datepicker component.
 | `disabled`                   | `bool`                         | `false`         |                                            |
 | `disabledKeyboardNavigation` | `bool`                         | `false`         |                                            |
 | `dropdownMode` (required)    | `enum('scroll'\|'select')`     | `'scroll'`      |                                            |
-| `endDate`                    | `object`                       |                 |                                            |
+| `endDate`                    | `instanceOf(Date)`             |                 |                                            |
 | `excludeDates`               | `array`                        |                 |                                            |
 | `excludeTimes`               | `array`                        |                 |                                            |
 | `filterDate`                 | `func`                         |                 |                                            |
@@ -29,13 +30,14 @@ General datepicker component.
 | `id`                         | `string`                       |                 |                                            |
 | `includeDates`               | `array`                        |                 |                                            |
 | `includeTimes`               | `array`                        |                 |                                            |
+| `injectTimes`                | `array`                        |                 |                                            |
 | `inline`                     | `bool`                         |                 |                                            |
 | `isClearable`                | `bool`                         |                 |                                            |
 | `locale`                     | `string`                       |                 |                                            |
-| `maxDate`                    | `object`                       |                 |                                            |
-| `maxTime`                    | `object`                       |                 |                                            |
-| `minDate`                    | `object`                       |                 |                                            |
-| `minTime`                    | `object`                       |                 |                                            |
+| `maxDate`                    | `instanceOf(Date)`             |                 |                                            |
+| `maxTime`                    | `instanceOf(Date)`             |                 |                                            |
+| `minDate`                    | `instanceOf(Date)`             |                 |                                            |
+| `minTime`                    | `instanceOf(Date)`             |                 |                                            |
 | `monthsShown`                | `number`                       | `1`             |                                            |
 | `name`                       | `string`                       |                 |                                            |
 | `onBlur`                     | `func`                         | `function() {}` |                                            |
@@ -48,7 +50,7 @@ General datepicker component.
 | `onYearChange`               | `func`                         | `function() {}` |                                            |
 | `onSelect`                   | `func`                         | `function() {}` |                                            |
 | `onWeekSelect`               | `func`                         |                 |                                            |
-| `openToDate`                 | `object`                       |                 |                                            |
+| `openToDate`                 | `instanceOf(Date)`             |                 |                                            |
 | `peekNextMonth`              | `bool`                         |                 |                                            |
 | `placeholderText`            | `string`                       |                 |                                            |
 | `popperClassName`            | `string`                       |                 |                                            |
@@ -58,7 +60,7 @@ General datepicker component.
 | `readOnly`                   | `bool`                         |                 |                                            |
 | `required`                   | `bool`                         |                 |                                            |
 | `scrollableYearDropdown`     | `bool`                         |                 |                                            |
-| `selected`                   | `object`                       |                 |                                            |
+| `selected`                   | `instanceOf(Date)`             |                 |                                            |
 | `selectsEnd`                 | `bool`                         |                 |                                            |
 | `selectsStart`               | `bool`                         |                 |                                            |
 | `shouldCloseOnSelect`        | `bool`                         | `true`          |                                            |
@@ -66,15 +68,15 @@ General datepicker component.
 | `showTimeSelect`             | `bool`                         | `false`         |                                            |
 | `showWeekNumbers`            | `bool`                         |                 |                                            |
 | `showYearDropdown`           | `bool`                         |                 |                                            |
-| `startDate`                  | `object`                       |                 |                                            |
+| `startDate`                  | `instanceOf(Date)`             |                 |                                            |
 | `startOpen`                  | `bool`                         |                 |                                            |
 | `tabIndex`                   | `number`                       |                 |                                            |
 | `timeFormat`                 | `string`                       |                 |                                            |
 | `timeIntervals`              | `number`                       | `30`            |                                            |
 | `title`                      | `string`                       |                 |                                            |
-| `todayButton`                | `string`                       |                 |                                            |
+| `todayButton`                | `node`                         |                 |                                            |
 | `useWeekdaysShort`           | `bool`                         |                 |                                            |
-| `utcOffset`                  | `number`                       |                 |                                            |
+| `utcOffset`                  | `union(number\|string)`        |                 |                                            |
 | `value`                      | `string`                       |                 |                                            |
 | `weekLabel`                  | `string`                       |                 |                                            |
 | `withPortal`                 | `bool`                         | `false`         |                                            |
