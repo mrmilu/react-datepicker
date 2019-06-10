@@ -7,7 +7,6 @@ import DatePicker from "../src/index.jsx";
 import Day from "../src/day";
 import TestWrapper from "./test_wrapper.jsx";
 import PopperComponent from "../src/popper_component.jsx";
-import TimezoneDatePicker from "./timezone_date_picker.jsx";
 import CustomInput from "./helper_components/custom_input.jsx";
 import * as utils from "../src/date_utils";
 
@@ -37,6 +36,8 @@ function getKey(key) {
       return { key, code: 39, which: 39 };
     case "ArrowDown":
       return { key, code: 40, which: 40 };
+    case "x":
+      return { key, code: 88, which: 88 };
   }
   throw new Error("Unknown key :" + key);
 }
@@ -69,17 +70,26 @@ describe("DatePicker", () => {
     expect(datePicker.instance().calendar).to.exist;
   });
 
-  it("should pass a custom class to the popper container", () => {
-    var datePicker = TestUtils.renderIntoDocument(
-      <DatePicker popperClassName="some-class-name" />
-    );
-    var dateInput = datePicker.input;
+  it("should allow the user to pass a wrapper component for the calendar", () => {
+    var datePicker = mount(<DatePicker calendarContainer={TestWrapper} />);
+
+    let dateInput = datePicker.instance().input;
     TestUtils.Simulate.focus(ReactDOM.findDOMNode(dateInput));
 
-    const element = ReactDOM.findDOMNode(datePicker);
-    const popper = element.querySelector(".react-datepicker-popper");
-    expect(popper).to.exist;
-    expect(popper.className).to.contain("some-class-name");
+    datePicker.update();
+    expect(datePicker.find(".test-wrapper").length).to.equal(1);
+    expect(datePicker.instance().calendar).to.exist;
+  });
+
+  it("should pass a custom class to the popper container", () => {
+    var datePicker = mount(<DatePicker popperClassName="some-class-name" />);
+    var dateInput = datePicker.instance().input;
+    TestUtils.Simulate.focus(ReactDOM.findDOMNode(dateInput));
+
+    datePicker.update();
+    const popper = datePicker.find(".react-datepicker-popper");
+    expect(popper.length).to.equal(1);
+    expect(popper.hasClass("some-class-name")).to.equal(true);
   });
 
   it("should show the calendar when clicking on the date input", () => {
@@ -174,6 +184,13 @@ describe("DatePicker", () => {
     expect(datePicker.state.open).to.be.false;
   });
 
+  it("should not set open state when it is readOnly and gets clicked", function() {
+    var datePicker = TestUtils.renderIntoDocument(<DatePicker readOnly />);
+    var dateInput = datePicker.input;
+    TestUtils.Simulate.click(ReactDOM.findDOMNode(dateInput));
+    expect(datePicker.state.open).to.be.false;
+  });
+
   it("should hide the calendar when clicking a day on the calendar", () => {
     var datePicker = TestUtils.renderIntoDocument(<DatePicker />);
     var dateInput = datePicker.input;
@@ -200,6 +217,26 @@ describe("DatePicker", () => {
     expect(datePicker.state.open).to.be.true;
   });
 
+  it("should set open to true if showTimeInput is true", () => {
+    var datePicker = TestUtils.renderIntoDocument(
+      <DatePicker shouldCloseOnSelect={false} showTimeInput />
+    );
+    var handleTimeChange = datePicker.handleTimeChange;
+    handleTimeChange("13:00");
+    expect(datePicker.state.open).to.be.true;
+  });
+
+  it("should set inputFocusTimeout to null if showTimeInput is false", () => {
+    var datePicker = TestUtils.renderIntoDocument(
+      <DatePicker withPortal={false} showTimeInput={false} />
+    );
+    datePicker.deferFocusInput = sinon.spy();
+    datePicker.state.open = true;
+    var handleBlur = datePicker.handleBlur;
+    handleBlur({});
+    expect(datePicker.deferFocusInput.calledOnce).to.be.true;
+  });
+
   it("should not hide the calendar when selecting a day in the calendar with Enter press, and shouldCloseOnSelect prop is false", () => {
     var data = getOnInputKeyDownStuff({ shouldCloseOnSelect: false });
     var dateInput = data.datePicker.input;
@@ -215,37 +252,42 @@ describe("DatePicker", () => {
   it("should update the preSelection state when a day is selected with Enter press", () => {
     var data = getOnInputKeyDownStuff({ shouldCloseOnSelect: false });
     var dateInput = data.datePicker.input;
+
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
     TestUtils.Simulate.keyDown(
       ReactDOM.findDOMNode(dateInput),
       getKey("Enter")
     );
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
-    utils.addWeeks(data.copyM, 2);
+
+    data.copyM = utils.addWeeks(data.copyM, 2);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
   });
 
-  xit("should update the preSelection state when a day is selected with mouse click", () => {
+  it("should update the preSelection state when a day is selected with mouse click", () => {
     // Note: We need monthsShown=2 so that today can still be clicked when
     // ArrowLeft selects the previous month. (On the 1st 2 days of the month.)
+    // On the last week of the month, when the next month includes the current
+    // week, we need monthsShown=1 to prevent today from appearing twice.
+    const dayOfMonth = utils.getDate(utils.newDate());
     var data = getOnInputKeyDownStuff({
       shouldCloseOnSelect: false,
-      monthsShown: 2
+      monthsShown: dayOfMonth < 15 ? 2 : 1
     });
 
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
 
-    var day = TestUtils.findRenderedDOMComponentWithClass(
+    var day = TestUtils.scryRenderedDOMComponentsWithClass(
       data.datePicker.calendar,
       "react-datepicker__day--today"
-    );
+    )[0];
     TestUtils.Simulate.click(ReactDOM.findDOMNode(day));
 
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
-    utils.addWeeks(data.copyM, 1);
+    data.copyM = utils.addWeeks(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -303,6 +345,17 @@ describe("DatePicker", () => {
     );
   });
 
+  it("should set the type attribute on the clear button to button", () => {
+    var datePicker = TestUtils.renderIntoDocument(
+      <DatePicker selected={utils.newDate("2015-12-15")} isClearable />
+    );
+    var clearButton = TestUtils.findRenderedDOMComponentWithClass(
+      datePicker,
+      "react-datepicker__close-icon"
+    );
+    expect(clearButton.type).to.equal("button");
+  });
+
   it("should allow clearing the date when isClearable is true", () => {
     var cleared = false;
     function handleChange(d) {
@@ -337,6 +390,21 @@ describe("DatePicker", () => {
     expect(datePicker.state.inputValue).to.be.null;
   });
 
+  it("should set the title attribute on the clear button if clearButtonTitle is supplied", () => {
+    const datePicker = TestUtils.renderIntoDocument(
+      <DatePicker
+        selected={utils.newDate("2018-03-19")}
+        isClearable
+        clearButtonTitle="clear button"
+      />
+    );
+    const clearButtonText = TestUtils.findRenderedDOMComponentWithClass(
+      datePicker,
+      "react-datepicker__close-icon"
+    ).getAttribute("title");
+    expect(clearButtonText).to.equal("clear button");
+  });
+
   it("should save time from the selected date", () => {
     const selected = utils.newDate("2015-12-20 10:11:12");
     let date;
@@ -356,9 +424,9 @@ describe("DatePicker", () => {
     )[0];
     TestUtils.Simulate.click(dayButton);
 
-    expect(utils.getHour(date)).to.equal(10);
-    expect(utils.getMinute(date)).to.equal(11);
-    expect(utils.getSecond(date)).to.equal(12);
+    expect(utils.getHours(date)).to.equal(10);
+    expect(utils.getMinutes(date)).to.equal(11);
+    expect(utils.getSeconds(date)).to.equal(12);
   });
 
   it("should mount and unmount properly", done => {
@@ -430,12 +498,19 @@ describe("DatePicker", () => {
   function getOnInputKeyDownStuff(opts) {
     opts = opts || {};
     var m = utils.newDate();
-    var copyM = utils.cloneDate(m);
-    var testFormat = "YYYY-MM-DD";
-    var exactishFormat = "YYYY-MM-DD HH: ZZ";
+    var copyM = utils.newDate(m);
+    var testFormat = "yyyy-MM-dd";
+    var exactishFormat = "yyyy-MM-dd hh: zzzz";
     var callback = sandbox.spy();
+    var onInputErrorCallback = sandbox.spy();
+
     var datePicker = TestUtils.renderIntoDocument(
-      <DatePicker selected={m} onChange={callback} {...opts} />
+      <DatePicker
+        selected={m}
+        onChange={callback}
+        onInputError={onInputErrorCallback}
+        {...opts}
+      />
     );
     var dateInput = datePicker.input;
     var nodeInput = ReactDOM.findDOMNode(dateInput);
@@ -446,6 +521,7 @@ describe("DatePicker", () => {
       testFormat,
       exactishFormat,
       callback,
+      onInputErrorCallback,
       datePicker,
       dateInput,
       nodeInput
@@ -454,7 +530,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown ArrowLeft", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
-    utils.subtractDays(data.copyM, 1);
+    data.copyM = utils.subDays(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -462,7 +538,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown ArrowRight", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowRight"));
-    utils.addDays(data.copyM, 1);
+    data.copyM = utils.addDays(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -470,7 +546,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown ArrowUp", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowUp"));
-    utils.subtractWeeks(data.copyM, 1);
+    data.copyM = utils.subWeeks(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -478,7 +554,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown ArrowDown", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
-    utils.addWeeks(data.copyM, 1);
+    data.copyM = utils.addWeeks(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -486,7 +562,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown PageUp", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("PageUp"));
-    utils.subtractMonths(data.copyM, 1);
+    data.copyM = utils.subMonths(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -494,7 +570,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown PageDown", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("PageDown"));
-    utils.addMonths(data.copyM, 1);
+    data.copyM = utils.addMonths(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -502,7 +578,7 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown End", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("End"));
-    utils.addYears(data.copyM, 1);
+    data.copyM = utils.addYears(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
@@ -510,14 +586,14 @@ describe("DatePicker", () => {
   it("should handle onInputKeyDown Home", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("Home"));
-    utils.subtractYears(data.copyM, 1);
+    data.copyM = utils.subYears(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
   });
   it("should not preSelect date if not between minDate and maxDate", () => {
     var data = getOnInputKeyDownStuff({
-      minDate: utils.subtractDays(utils.newDate(), 1),
+      minDate: utils.subDays(utils.newDate(), 1),
       maxDate: utils.addDays(utils.newDate(), 1)
     });
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
@@ -525,12 +601,37 @@ describe("DatePicker", () => {
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
   });
+  it("should not preSelect date if before minDate", () => {
+    var data = getOnInputKeyDownStuff({
+      minDate: utils.subDays(utils.newDate(), 1)
+    });
+    TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowUp"));
+    expect(
+      utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
+    ).to.equal(utils.formatDate(data.copyM, data.testFormat));
+  });
+  it("should not preSelect date if not after maxDate", () => {
+    var data = getOnInputKeyDownStuff({
+      maxDate: utils.addDays(utils.newDate(), 1)
+    });
+    TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
+    expect(
+      utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
+    ).to.equal(utils.formatDate(data.copyM, data.testFormat));
+  });
+  it("should not clear the preSelect date when a pressed key is not a navigation key", () => {
+    var data = getOnInputKeyDownStuff();
+    TestUtils.Simulate.keyDown(data.nodeInput, getKey("x"));
+    expect(data.datePicker.state.preSelection.valueOf()).to.equal(
+      data.copyM.valueOf()
+    );
+  });
   describe("onInputKeyDown Enter", () => {
     it("should update the selected date", () => {
       var data = getOnInputKeyDownStuff();
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("Enter"));
-      utils.subtractDays(data.copyM, 1);
+      data.copyM = utils.subDays(data.copyM, 1);
       expect(data.callback.calledOnce).to.be.true;
       var result = data.callback.args[0][0];
       expect(utils.formatDate(result, data.testFormat)).to.equal(
@@ -548,16 +649,20 @@ describe("DatePicker", () => {
         utils.formatDate(data.callback.args[0][0], data.testFormat)
       ).to.equal(utils.formatDate(data.copyM, data.testFormat));
     });
-    it("should not update the selected date if the date input manually it has something wrong", () => {
+    it("should not update the selected date if the manual date input is invalid", () => {
       var data = getOnInputKeyDownStuff();
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("Backspace"));
+      TestUtils.Simulate.change(data.nodeInput, {
+        target: { value: data.nodeInput.value.slice(0, -1) }
+      });
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("Enter"));
       expect(data.callback.calledOnce).to.be.false;
+      expect(data.onInputErrorCallback.calledOnce).to.be.true;
     });
     it("should not select excludeDates", () => {
       var data = getOnInputKeyDownStuff({
-        excludeDates: [utils.subtractDays(utils.newDate(), 1)]
+        excludeDates: [utils.subDays(utils.newDate(), 1)]
       });
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("Enter"));
@@ -566,12 +671,33 @@ describe("DatePicker", () => {
     it("should not select dates excluded from filterDate", () => {
       var data = getOnInputKeyDownStuff({
         filterDate: date =>
-          utils.getDay(date) !==
-          utils.getDay(utils.subtractDays(utils.newDate(), 1))
+          utils.getDay(date) !== utils.getDay(utils.subDays(utils.newDate(), 1))
       });
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
       TestUtils.Simulate.keyDown(data.nodeInput, getKey("Enter"));
       expect(data.callback.calledOnce).to.be.false;
+    });
+  });
+  describe("onInputKeyDown Escape", () => {
+    it("should not update the selected date if the date input manually it has something wrong", () => {
+      var data = getOnInputKeyDownStuff();
+      TestUtils.Simulate.keyDown(data.nodeInput, {
+        key: "ArrowDown",
+        keyCode: 40,
+        which: 40
+      });
+      TestUtils.Simulate.keyDown(data.nodeInput, {
+        key: "Backspace",
+        keyCode: 8,
+        which: 8
+      });
+      TestUtils.Simulate.keyDown(data.nodeInput, {
+        key: "Escape",
+        keyCode: 27,
+        which: 27
+      });
+      expect(data.callback.calledOnce).to.be.false;
+      expect(data.onInputErrorCallback.calledOnce).to.be.true;
     });
   });
   it("should reset the keyboard selection when closed", () => {
@@ -586,17 +712,24 @@ describe("DatePicker", () => {
     var data = getOnInputKeyDownStuff();
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
     data.datePicker.setOpen(true);
-    utils.subtractDays(data.copyM, 1);
+    data.copyM = utils.subDays(data.copyM, 1);
     expect(
       utils.formatDate(data.datePicker.state.preSelection, data.testFormat)
     ).to.equal(utils.formatDate(data.copyM, data.testFormat));
   });
-  it("should open the calendar when an arrow key is pressed", () => {
+  it("should open the calendar when the down arrow key is pressed", () => {
+    var data = getOnInputKeyDownStuff();
+    data.datePicker.setOpen(false);
+    expect(data.datePicker.state.open).to.be.false;
+    TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowDown"));
+    expect(data.datePicker.state.open).to.be.true;
+  });
+  it("should not open the calendar when the left arrow key is pressed", () => {
     var data = getOnInputKeyDownStuff();
     data.datePicker.setOpen(false);
     expect(data.datePicker.state.open).to.be.false;
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("ArrowLeft"));
-    expect(data.datePicker.state.open).to.be.true;
+    expect(data.datePicker.state.open).to.be.false;
   });
   it("should default to the current day on Enter", () => {
     const data = getOnInputKeyDownStuff({ selected: null });
@@ -606,7 +739,6 @@ describe("DatePicker", () => {
     expect(utils.formatDate(selected, data.exactishFormat)).to.equal(
       utils.formatDate(data.copyM, data.exactishFormat)
     );
-    expect(selected.isLocal()).to.equal(true);
   });
 
   it("should autofocus the input given the autoFocus prop", () => {
@@ -636,8 +768,8 @@ describe("DatePicker", () => {
 
   function getOnInputKeyDownDisabledKeyboardNavigationStuff() {
     var m = utils.newDate();
-    var copyM = utils.cloneDate(m);
-    var testFormat = "YYYY-MM-DD";
+    var copyM = utils.newDate(m);
+    var testFormat = "yyyy-MM-dd";
     var callback = sandbox.spy();
     var datePicker = TestUtils.renderIntoDocument(
       <DatePicker selected={m} onChange={callback} disabledKeyboardNavigation />
@@ -695,7 +827,6 @@ describe("DatePicker", () => {
     TestUtils.Simulate.keyDown(data.nodeInput, getKey("End"));
     expect(data.callback.called).to.be.false;
   });
-
   it("should correctly clear date with empty input string", () => {
     var cleared = false;
     function handleChange(d) {
@@ -716,24 +847,6 @@ describe("DatePicker", () => {
     TestUtils.Simulate.change(input);
     expect(cleared).to.be.true;
   });
-  it("should correctly update the date input when utcOffset is all that changes on the selected date", () => {
-    var date = utils.setUTCOffset(utils.newDate("2016-11-22T00:00:00Z"), -6);
-    var tmzDatePicker = mount(<TimezoneDatePicker />);
-    tmzDatePicker.setState({ startDate: date, utcOffset: -6 });
-
-    expect(tmzDatePicker.find("input").prop("value")).to.equal(
-      "2016-11-21 18:00"
-    );
-
-    tmzDatePicker.setState({
-      utcOffset: 6,
-      startDate: utils.setUTCOffset(utils.cloneDate(date), 6)
-    });
-
-    expect(tmzDatePicker.find("input").prop("value")).to.equal(
-      "2016-11-22 06:00"
-    );
-  });
   it("should correctly update the input when the value prop changes", () => {
     const datePicker = mount(<DatePicker />);
     expect(datePicker.find("input").prop("value")).to.equal("");
@@ -744,13 +857,14 @@ describe("DatePicker", () => {
     const onChange = date => datePicker.setProps({ selected: date });
     const datePicker = mount(
       <DatePicker
-        dateFormat={["YYYY-MM-DD", "MM/DD/YYYY", "MM/DD/YY"]}
+        dateFormat={["yyyy-MM-dd", "MM/dd/yyyy", "MM/dd/yy"]}
         onChange={onChange}
       />
     );
     expect(datePicker.find("input").prop("value")).to.equal("");
 
     const str = "12/30/1982";
+    datePicker.find("input").simulate("focus");
     str.split("").forEach((c, i) => {
       datePicker.find("input").simulate("change", {
         target: { value: datePicker.find("input").prop("value") + c }
@@ -761,7 +875,7 @@ describe("DatePicker", () => {
       );
     });
     expect(
-      utils.formatDate(datePicker.prop("selected"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.prop("selected"), "yyyy-MM-dd")
     ).to.equal("1982-12-30");
   });
   it("should invoke provided onChangeRaw function on manual input change", () => {
@@ -846,7 +960,7 @@ describe("DatePicker", () => {
       <DatePicker selected={utils.newDate("1988-12-30")} />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("1988-12-30");
   });
   it("should default to the start date when selecting an end date", () => {
@@ -854,7 +968,7 @@ describe("DatePicker", () => {
       <DatePicker startDate={utils.newDate("1988-11-30")} selectsEnd />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("1988-11-30");
   });
   it("should default to the end date when selecting a start date", () => {
@@ -862,7 +976,7 @@ describe("DatePicker", () => {
       <DatePicker endDate={utils.newDate("1988-12-31")} selectsStart />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("1988-12-31");
   });
   it("should default to a date <= maxDate", () => {
@@ -870,7 +984,7 @@ describe("DatePicker", () => {
       <DatePicker maxDate={utils.newDate("1982-01-01")} />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("1982-01-01");
   });
   it("should default to a date >= minDate", () => {
@@ -878,7 +992,7 @@ describe("DatePicker", () => {
       <DatePicker minDate={utils.newDate("2063-04-05")} />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("2063-04-05");
   });
   it("should default to the openToDate if there is one", () => {
@@ -886,14 +1000,14 @@ describe("DatePicker", () => {
       <DatePicker openToDate={utils.newDate("2020-01-23")} />
     );
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
     ).to.equal("2020-01-23");
   });
   it("should otherwise default to the current date", () => {
     const datePicker = mount(<DatePicker />);
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
-    ).to.equal(utils.formatDate(utils.newDate(), "YYYY-MM-DD"));
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(utils.newDate(), "yyyy-MM-dd"));
   });
   it("should support an initial null `selected` value in inline mode", () => {
     const datePicker = mount(<DatePicker inline selected={null} />);
@@ -907,13 +1021,45 @@ describe("DatePicker", () => {
     const future = utils.addDays(utils.newDate(), 100);
     const datePicker = mount(<DatePicker inline selected={selected} />);
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
-    ).to.equal(utils.formatDate(selected, "YYYY-MM-DD"));
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(selected, "yyyy-MM-dd"));
     datePicker.setProps({ selected: future });
     expect(
-      utils.formatDate(datePicker.state("preSelection"), "YYYY-MM-DD")
-    ).to.equal(utils.formatDate(future, "YYYY-MM-DD"));
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(future, "yyyy-MM-dd"));
   });
+  it("should switch month in inline mode immediately, when year is updated", () => {
+    const selected = utils.newDate();
+    const future = utils.addYears(utils.newDate(), 1);
+    const datePicker = mount(<DatePicker inline selected={selected} />);
+    expect(
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(selected, "yyyy-MM-dd"));
+    datePicker.setProps({ selected: future });
+    expect(
+      utils.formatDate(datePicker.state("preSelection"), "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(future, "yyyy-MM-dd"));
+  });
+
+  it("should not switch months in inline mode when a day is clicked", () => {
+    const selected = utils.newDate();
+    const datePicker = TestUtils.renderIntoDocument(
+      <DatePicker inline selected={selected} monthsShown={2} />
+    );
+    expect(
+      utils.formatDate(datePicker.state.preSelection, "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(selected, "yyyy-MM-dd"));
+
+    let days = TestUtils.scryRenderedComponentsWithType(datePicker, Day);
+    let nextMonthDay = days.find(
+      d => d.props.month !== utils.getMonth(selected)
+    );
+    TestUtils.Simulate.click(ReactDOM.findDOMNode(nextMonthDay));
+    expect(
+      utils.formatDate(datePicker.state.preSelection, "yyyy-MM-dd")
+    ).to.equal(utils.formatDate(selected, "yyyy-MM-dd"));
+  });
+
   it("should not set open state when focusing on the date input and the preventOpenOnFocus prop is set", () => {
     const datePicker = TestUtils.renderIntoDocument(
       <DatePicker preventOpenOnFocus />
@@ -939,5 +1085,77 @@ describe("DatePicker", () => {
     );
     datePicker.clear();
     expect(datePicker.state.inputValue).to.be.null;
+  });
+  it("should not open when open is false and input is focused", () => {
+    var datePicker = TestUtils.renderIntoDocument(<DatePicker open={false} />);
+    var dateInput = datePicker.input;
+    TestUtils.Simulate.focus(ReactDOM.findDOMNode(dateInput));
+    expect(datePicker.calendar).to.not.exist;
+  });
+  it("should open when open is true", () => {
+    var datePicker = TestUtils.renderIntoDocument(<DatePicker open />);
+    expect(datePicker.calendar).to.exist;
+  });
+  it("should fire onInputClick when input is clicked", () => {
+    const onInputClickSpy = sinon.spy();
+    var datePicker = TestUtils.renderIntoDocument(
+      <DatePicker onInputClick={onInputClickSpy} />
+    );
+    var dateInput = datePicker.input;
+    TestUtils.Simulate.click(ReactDOM.findDOMNode(dateInput));
+    defer(() => {
+      assert(onInputClickSpy.calledOnce, "should fire onInputClick");
+      done();
+    });
+  });
+
+  it("should set monthSelectedIn to 0 if monthsShown prop changes", () => {
+    const datePicker = mount(<DatePicker monthsShown={2} inline />);
+    datePicker.setState({ monthSelectedIn: 1 }, () => {
+      assert.equal(datePicker.state("monthSelectedIn"), 1);
+      datePicker.setProps({ monthsShown: 1 }, () => {
+        assert.equal(datePicker.props().monthsShown, 1);
+        setTimeout(() => {
+          // Give setState in componentDidUpdate time to run
+          assert.equal(datePicker.state("monthSelectedIn"), 0);
+        }, 100);
+      });
+    });
+  });
+
+  it("should save monthSelectedIn only if calendar is inline", () => {
+    var datePickerInline = TestUtils.renderIntoDocument(
+      <DatePicker inline monthsShown={2} />
+    );
+    var dayButtonInline = TestUtils.scryRenderedDOMComponentsWithClass(
+      datePickerInline,
+      "react-datepicker__day"
+    )[45];
+    TestUtils.Simulate.click(dayButtonInline);
+    assert.equal(datePickerInline.state.monthSelectedIn, 1);
+
+    var datePicker = TestUtils.renderIntoDocument(
+      <DatePicker monthsShown={2} />
+    );
+    var dateInput = datePicker.input;
+    TestUtils.Simulate.focus(ReactDOM.findDOMNode(dateInput));
+    var day = TestUtils.scryRenderedComponentsWithType(
+      datePicker.calendar,
+      Day
+    )[40];
+    TestUtils.Simulate.click(ReactDOM.findDOMNode(day));
+    assert.equal(datePicker.state.monthSelectedIn, undefined);
+  });
+
+  it("should disable non-jumping if prop inlineFocusSelectedMonth is true", () => {
+    var datePickerInline = TestUtils.renderIntoDocument(
+      <DatePicker inline monthsShown={2} inlineFocusSelectedMonth />
+    );
+    var dayButtonInline = TestUtils.scryRenderedDOMComponentsWithClass(
+      datePickerInline,
+      "react-datepicker__day"
+    )[40];
+    TestUtils.Simulate.click(dayButtonInline);
+    assert.equal(datePickerInline.state.monthSelectedIn, undefined);
   });
 });

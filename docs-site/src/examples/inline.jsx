@@ -1,13 +1,12 @@
 import React from "react";
 import DatePicker from "react-datepicker";
-import moment from "moment";
 
 export default class Inline extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      startDate: moment()
+      startDate: new Date()
     };
   }
 
@@ -35,7 +34,8 @@ export default class Inline extends React.Component {
           <DatePicker
             inline
             selected={this.state.startDate}
-            onChange={this.handleChange}/>
+            onChange={this.handleChange}
+          />
         </div>
       </div>
     );
